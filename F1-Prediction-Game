@@ -2,14 +2,22 @@ import requests
 from bs4 import BeautifulSoup
 import random
 
-def fetch_upcoming_race():
+# Fetch the 2025 F1 schedule with sprint races
+def fetch_f1_schedule():
     url = "https://www.formula1.com/en/racing/2025.html"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    race_name = soup.find('h1', class_='race-name').text.strip()
-    race_date = soup.find('span', class_='race-date').text.strip()
-    return race_name, race_date
+    races = []
+    sprint_races = ['Shanghai', 'Miami', 'Spa', 'Austin', 'Sao Paulo', 'Qatar']
+    for race in soup.select('.race-name'):
+        race_name = race.text.strip()
+        races.append({
+            'name': race_name,
+            'has_sprint': any(sprint in race_name for sprint in sprint_races)
+        })
+    return races
 
+# Fetch the driver lineup
 def fetch_driver_lineup():
     url = "https://www.formula1.com/en/drivers.html"
     response = requests.get(url)
@@ -17,8 +25,8 @@ def fetch_driver_lineup():
     drivers = [driver.text.strip() for driver in soup.find_all('span', class_='driver-name')]
     return drivers
 
+# Fetch race results
 def fetch_race_results(race_name):
-    # Adjust the URL to point to the specific race results page
     url = f"https://www.formula1.com/en/results.html/2025/races/{race_name.replace(' ', '_')}.html"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -26,19 +34,22 @@ def fetch_race_results(race_name):
     all_drivers = [driver.text.strip() for driver in soup.select('.resultsarchive-table .driver .hide-for-tablet')]
     return {'top_3': top_3, 'all_drivers': all_drivers}
 
-def input_predictions(player):
+# Input predictions
+def input_predictions(player, race_type):
     predictions = {}
     predictions['top_3'] = []
-    print(f"Enter predictions for {player}:")
+    print(f"Enter predictions for {player} ({race_type}):")
     for i in range(3):
         driver = input(f"Enter your prediction for position {i+1}: ")
         predictions['top_3'].append(driver)
     predictions['random_position'] = int(input("Enter your prediction for the random driver's position: "))
     return predictions
 
+# Select a random driver
 def select_random_driver(drivers):
     return random.choice(drivers)
 
+# Calculate points
 def calculate_points(predictions, actual_results, random_driver):
     points = 0
     for i, driver in enumerate(predictions['top_3']):
@@ -56,27 +67,52 @@ def calculate_points(predictions, actual_results, random_driver):
     return points
 
 def main():
-    race_name, race_date = fetch_upcoming_race()
-    print(f"Upcoming Race: {race_name} on {race_date}")
-    
+    races = fetch_f1_schedule()
     drivers = fetch_driver_lineup()
     
-    player1_predictions = input_predictions("Player 1")
-    player2_predictions = input_predictions("Player 2")
+    player1_total_points = 0
+    player2_total_points = 0
     
-    player1_random_driver = select_random_driver(drivers)
-    player2_random_driver = select_random_driver(drivers)
-    
-    print(f"Player 1's random driver: {player1_random_driver}")
-    print(f"Player 2's random driver: {player2_random_driver}")
-    
-    actual_results = fetch_race_results(race_name)
-    
-    player1_points = calculate_points(player1_predictions, actual_results, player1_random_driver)
-    player2_points = calculate_points(player2_predictions, actual_results, player2_random_driver)
-    
-    print(f"Player 1 points: {player1_points}")
-    print(f"Player 2 points: {player2_points}")
+    for race in races:
+        print(f"Upcoming Race: {race['name']}")
+        
+        player1_predictions_main = input_predictions("Player 1", "Main Race")
+        player2_predictions_main = input_predictions("Player 2", "Main Race")
+        
+        if race['has_sprint']:
+            player1_predictions_sprint = input_predictions("Player 1", "Sprint Race")
+            player2_predictions_sprint = input_predictions("Player 2", "Sprint Race")
+        
+        player1_random_driver = select_random_driver(drivers)
+        player2_random_driver = select_random_driver(drivers)
+        
+        print(f"Player 1's random driver: {player1_random_driver}")
+        print(f"Player 2's random driver: {player2_random_driver}")
+        
+        actual_results_main = fetch_race_results(race['name'])
+        
+        player1_points_main = calculate_points(player1_predictions_main, actual_results_main, player1_random_driver)
+        player2_points_main = calculate_points(player2_predictions_main, actual_results_main, player2_random_driver)
+        
+        player1_total_points += player1_points_main
+        player2_total_points += player2_points_main
+        
+        print(f"Player 1 points for {race['name']} (Main Race): {player1_points_main}")
+        print(f"Player 2 points for {race['name']} (Main Race): {player2_points_main}")
+        
+        if race['has_sprint']:
+            actual_results_sprint = fetch_race_results(race['name'] + " Sprint")
+            
+            player1_points_sprint = calculate_points(player1_predictions_sprint, actual_results_sprint, player1_random_driver)
+            player2_points_sprint = calculate_points(player2_predictions_sprint, actual_results_sprint, player2_random_driver)
+            
+            player1_total_points += player1_points_sprint
+            player2_total_points += player2_points_sprint
+            
+            print(f"Player 1 points for {race['name']} (Sprint Race): {player1_points_sprint}")
+            print(f"Player 2 points for {race['name']} (Sprint Race): {player2_points_sprint}")
+        
+        print(f"Total points - Player 1: {player1_total_points}, Player 2: {player2_total_points}")
 
 if __name__ == "__main__":
     main()
