@@ -1,5 +1,7 @@
 I'm still trying to work on this on the side, me and my friend do play this game and maintain an excel sheet. I thought of creating something simple that works and thus get started here as well. Please feel free to provide any suggestions and recommendations.
 
+I'm trying to make this work for sprint as well as main races - random driver remains common across that weekend. 
+
 # Formula 1 Prediction Game
 
 ## Overview
